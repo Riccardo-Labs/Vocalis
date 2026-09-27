@@ -2,11 +2,7 @@ namespace Vocalis.Audio;
 
 public static class LivelloAudio
 {
-    //OVERVIEW: Questa classe fornisce metodi per calcolare il livello audio corrente del microfono.
-    //          Il livello audio è rappresentato come un valore compreso tra 0.0 (silenzio) e 1.0 (massimo volume).
-
-    //REQUIRES: Il microfono deve essere inizializzato e pronto per la lettura dei dati audio.
-    //EFFECTS: Restituisce il livello audio corrente del microfono come valore compreso tra 0.0 e 1.0.
+    //OVERVIEW: Questa classe fornisce metodi per calcolare il livello audio corrente del microfono. Il livello audio è rappresentato come un valore compreso tra 0.0 (silenzio) e 1.0 (massimo volume).
 
     private const double MassimoValoreShort = 32768.0; // Valore massimo per un campione audio a 16 bit
 
@@ -22,7 +18,7 @@ public static class LivelloAudio
         }
 
         double rms = Math.Sqrt(sommaQuadrati / campioni.Length); // formula RMS (Root Mean Square)
-        return Math.Min(rms / MassimoValoreShort, 1.0); // normalizzazione per campioni a 16 bit (short)
+        return Math.Min(rms / MassimoValoreShort, 1.0); // normalizzazione 
     }
 
     /// <summary>
@@ -44,6 +40,6 @@ public static class LivelloAudio
         }
 
         double rms = Math.Sqrt(sommaQuadrati / numeroCampioni); // formula RMS (Root Mean Square)
-        return Math.Min(rms / MassimoValoreShort, 1.0); // normalizzazione per campioni a 16 bit
+        return Math.Min(rms / MassimoValoreShort, 1.0); // normalizzazione 
     }
 }
