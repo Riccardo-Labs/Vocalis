@@ -2,6 +2,7 @@ using System.IO;
 using NAudio.Wave;
 using Vocalis.Attivazione;
 using Vocalis.Audio;
+using Vocalis.Trascrizione;
 
 namespace Vocalis;
 
@@ -14,6 +15,9 @@ public sealed class CoordinatoreDettatura : IDisposable
     private readonly HookTastiera hookTastiera;
     private readonly RegistratoreAudio registratore;
     private readonly MacchinaStatiDettatura macchina = new();
+    private readonly ScaricatoreModello scaricatoreModello = new();
+    private readonly string percorsoModello;
+    private Trascrittore? trascrittore;
 
     // Mouse e tastiera girano su due thread di hook separati: senza questo, un clic ed Esc
     // capitati nello stesso istante potrebbero toccare macchina/registratore in contemporanea.
@@ -21,13 +25,16 @@ public sealed class CoordinatoreDettatura : IDisposable
     private readonly SemaphoreSlim semaforo = new(1, 1);
 
     public event Action<StatoDettatura>? StatoCambiato;
+    public event Action<double>? AvanzamentoDownloadModello;
+    public event Action<string>? TrascrizioneCompletata;
     public event Action<string>? Errore;
 
-    public CoordinatoreDettatura(HookMouse hookMouse, HookTastiera hookTastiera, RegistratoreAudio registratore)
+    public CoordinatoreDettatura(HookMouse hookMouse, HookTastiera hookTastiera, RegistratoreAudio registratore, string percorsoModello)
     {
         this.hookMouse = hookMouse;
         this.hookTastiera = hookTastiera;
         this.registratore = registratore;
+        this.percorsoModello = percorsoModello;
 
         hookMouse.PulsanteLateraleCliccato += OnPulsanteLaterale;
 
@@ -63,7 +70,7 @@ public sealed class CoordinatoreDettatura : IDisposable
             }
             else if (macchina.Stato == StatoDettatura.Trascrizione)
             {
-                await FermaESalvaAsync();
+                await FermaETrascriviAsync();
             }
         }
         catch (Exception ex)
@@ -110,20 +117,41 @@ public sealed class CoordinatoreDettatura : IDisposable
         }
     }
 
-    private async Task FermaESalvaAsync()
+    private async Task FermaETrascriviAsync()
     {
         byte[] audio = await registratore.FermaRegistrazioneAsync();
 
-        // TODO Fase 4: qui andrà la trascrizione vera con Whisper. Per ora, come prova che
-        // l'attivazione da mouse funziona davvero, salviamo un .wav.
-        string percorso = Path.Combine(Path.GetTempPath(), "vocalis-attivazione.wav");
-        using (var scrittore = new WaveFileWriter(percorso, registratore.FormatoAudio))
+        if (trascrittore == null)
         {
-            scrittore.Write(audio, 0, audio.Length);
+            var avanzamento = new Progress<double>(percentuale => AvanzamentoDownloadModello?.Invoke(percentuale));
+            await scaricatoreModello.AssicuraModelloAsync(percorsoModello, avanzamento);
+            trascrittore = new Trascrittore(percorsoModello);
         }
 
-        macchina.FineTrascrizione();
-        StatoCambiato?.Invoke(macchina.Stato);
+        // L'audio passa da un file .wav temporaneo (Whisper.net legge da uno Stream) e viene
+        // cancellato subito dopo: non serve tenerlo, non è il testo dettato a dover restare.
+        string percorsoTemporaneo = Path.Combine(Path.GetTempPath(), $"vocalis-{Guid.NewGuid():N}.wav");
+        try
+        {
+            using (var scrittore = new WaveFileWriter(percorsoTemporaneo, registratore.FormatoAudio))
+            {
+                scrittore.Write(audio, 0, audio.Length);
+            }
+
+            string testo;
+            using (FileStream flusso = File.OpenRead(percorsoTemporaneo))
+            {
+                testo = await trascrittore.TrascriviAsync(flusso);
+            }
+
+            macchina.FineTrascrizione();
+            StatoCambiato?.Invoke(macchina.Stato);
+            TrascrizioneCompletata?.Invoke(testo);
+        }
+        finally
+        {
+            File.Delete(percorsoTemporaneo);
+        }
     }
 
     public void Dispose()
@@ -131,6 +159,7 @@ public sealed class CoordinatoreDettatura : IDisposable
         hookMouse.PulsanteLateraleCliccato -= OnPulsanteLaterale;
         hookTastiera.EscPremuto -= OnEscPremuto;
         hookTastiera.DeveBloccareEsc = null;
+        trascrittore?.Dispose();
         semaforo.Dispose();
     }
 }

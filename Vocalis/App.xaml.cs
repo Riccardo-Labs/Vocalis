@@ -32,7 +32,7 @@ public partial class App : Application
     public App()
     {
         // I campi sopra sono già inizializzati qui: l'ordine di dichiarazione conta.
-        coordinatore = new CoordinatoreDettatura(hookMouse, hookTastiera, registratoreDettatura);
+        coordinatore = new CoordinatoreDettatura(hookMouse, hookTastiera, registratoreDettatura, PercorsoModello);
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -59,12 +59,20 @@ public partial class App : Application
         coordinatore.StatoCambiato += stato => Dispatcher.BeginInvoke(() => iconaNotifica?.ImpostaStato(stato switch
         {
             StatoDettatura.Registrazione => "Registrazione...",
-            StatoDettatura.Trascrizione => "Salvataggio...",
+            StatoDettatura.Trascrizione => "Trascrizione...",
             _ => "Pronto",
         }));
+        coordinatore.AvanzamentoDownloadModello += percentuale => Dispatcher.BeginInvoke(() =>
+            iconaNotifica?.ImpostaStato($"Scaricamento modello... {percentuale:P0}"));
+        coordinatore.TrascrizioneCompletata += testo => Dispatcher.BeginInvoke(() =>
+            MessageBox.Show(
+                string.IsNullOrEmpty(testo) ? "(nessun testo riconosciuto)" : testo,
+                "Vocalis — Trascrizione",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information));
         coordinatore.Errore += messaggio => Dispatcher.BeginInvoke(() =>
             MessageBox.Show(
-                $"Registrazione non riuscita.\nVerifica che un microfono sia collegato e impostato come predefinito.\n\nDettagli: {messaggio}",
+                $"Operazione non riuscita.\nVerifica microfono e connessione a internet.\n\nDettagli: {messaggio}",
                 "Vocalis",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error));
