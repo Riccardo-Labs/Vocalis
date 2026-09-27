@@ -51,7 +51,9 @@ public sealed class IconaNotifica : IDisposable
 
         notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            // L'icona è già incorporata nell'exe grazie ad ApplicationIcon nel csproj:
+            // la estraiamo da lì invece di portarci dietro il file .ico separato.
+            Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? SystemIcons.Application,
             ContextMenuStrip = menu,
             Visible = true,
         };

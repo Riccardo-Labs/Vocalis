@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="vocalis" x1="70" y1="80" x2="440" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#35B9FF"/>
+      <stop offset="0.5" stop-color="#4C7CFF"/>
+      <stop offset="1" stop-color="#7437F2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Speech bubble -->
+  <path fill="url(#vocalis)" d="
+    M118 64
+    H394
+    C445 64 480 99 480 150
+    V315
+    C480 366 445 401 394 401
+    H205
+    C190 401 177 405 164 413
+    L96 456
+    C84 464 70 454 76 440
+    L100 399
+    C66 390 42 358 42 315
+    V150
+    C42 99 67 64 118 64
+    Z"/>
+
+  <!-- Centered five-bar waveform -->
+  <g fill="#FFFFFF" transform="translate(0,-14)">
+    <rect x="129" y="145" width="38" height="222" rx="19"/>
+    <rect x="183" y="225" width="38" height="142" rx="19"/>
+    <rect x="237" y="184" width="38" height="183" rx="19"/>
+    <rect x="291" y="225" width="38" height="142" rx="19"/>
+    <rect x="345" y="145" width="38" height="222" rx="19"/>
+  </g>
+</svg>

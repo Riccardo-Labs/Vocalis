@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <!-- WinForms serve solo per l'icona nell'area di notifica (NotifyIcon). -->
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>vocalis.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
