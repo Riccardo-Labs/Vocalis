@@ -20,9 +20,13 @@ public partial class App : Application
     private readonly HookTastiera hookTastiera = new();
     private readonly RegistratoreAudio registratoreDettatura = new();
     private readonly CoordinatoreDettatura coordinatore;
+
+    private static readonly string PercorsoModello = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vocalis", "models", "ggml-large-v3-turbo.bin");
 #if DEBUG
     private readonly RegistratoreAudio registratoreTest = new();
     private readonly ScaricatoreModello scaricatoreTest = new();
+    private Trascrittore? trascrittoreTest;
 #endif
 
     public App()
@@ -93,13 +97,37 @@ public partial class App : Application
                 scrittore.Write(audio, 0, audio.Length);
             }
 
-            MessageBox.Show($"Test salvato in:\n{percorso}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (!File.Exists(PercorsoModello))
+            {
+                MessageBox.Show(
+                    "Modello non ancora scaricato: prova prima \"Test: scarica modello Whisper\".",
+                    "Vocalis",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            trascrittoreTest ??= new Trascrittore(PercorsoModello);
+
+            var cronometro = System.Diagnostics.Stopwatch.StartNew();
+            string testo;
+            using (FileStream flusso = File.OpenRead(percorso))
+            {
+                testo = await trascrittoreTest.TrascriviAsync(flusso);
+            }
+            cronometro.Stop();
+
+            MessageBox.Show(
+                $"Trascrizione ({cronometro.ElapsedMilliseconds} ms):\n\n{testo}",
+                "Vocalis",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             // Es. nessun microfono di default disponibile: non deve far crashare l'app.
             MessageBox.Show(
-                $"Registrazione non riuscita.\nVerifica che un microfono sia collegato e impostato come predefinito.\n\nDettagli: {ex.Message}",
+                $"Registrazione o trascrizione non riuscita.\nVerifica che un microfono sia collegato e impostato come predefinito.\n\nDettagli: {ex.Message}",
                 "Vocalis",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -113,15 +141,11 @@ public partial class App : Application
     // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
     private async Task EseguiTestDownloadModelloAsync()
     {
-        string cartellaModelli = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vocalis", "models");
-        string percorsoModello = Path.Combine(cartellaModelli, "ggml-large-v3-turbo.bin");
-
         try
         {
-            if (File.Exists(percorsoModello))
+            if (File.Exists(PercorsoModello))
             {
-                MessageBox.Show($"Il modello è già presente:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Il modello è già presente:\n{PercorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -129,9 +153,9 @@ public partial class App : Application
             var avanzamento = new Progress<double>(percentuale =>
                 iconaNotifica?.ImpostaStato($"Download modello... {percentuale:P0}"));
 
-            await scaricatoreTest.AssicuraModelloAsync(percorsoModello, avanzamento);
+            await scaricatoreTest.AssicuraModelloAsync(PercorsoModello, avanzamento);
 
-            MessageBox.Show($"Modello scaricato in:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Modello scaricato in:\n{PercorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
