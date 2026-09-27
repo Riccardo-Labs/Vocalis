@@ -12,7 +12,7 @@ public sealed class RegistratoreAudio : IDisposable
 
     private WasapiCapture? capture;
     private MemoryStream? bufferAudio;
-    private TaskCompletionSource? registrazioneFermata;
+    private TaskCompletionSource<byte[]>? registrazioneCompletata;
 
     // Formato con cui i dati vengono effettivamente catturati (dopo l'eventuale conversione di WASAPI).
     public WaveFormat? FormatoAudio => capture?.WaveFormat;
@@ -29,6 +29,11 @@ public sealed class RegistratoreAudio : IDisposable
             WaveFormat = FormatoRichiesto,
         };
         bufferAudio = new MemoryStream();
+        // Creato subito, non al momento dello stop: se il microfono si scollega da solo mentre
+        // si registra, WASAPI ferma la cattura per conto suo, prima ancora che l'utente clicchi.
+        // Se aspettassimo a crearlo dentro FermaRegistrazioneAsync(), quel primo stop andrebbe
+        // perso e il secondo clic resterebbe in attesa di un evento che non arriva più.
+        registrazioneCompletata = new TaskCompletionSource<byte[]>();
 
         capture.DataAvailable += (_, e) =>
         {
@@ -41,23 +46,29 @@ public sealed class RegistratoreAudio : IDisposable
             LivelloCambiato?.Invoke(LivelloAudio.CalcolaRMS(campioni));
         };
 
-        capture.RecordingStopped += (_, _) =>
+        capture.RecordingStopped += (_, e) =>
         {
             // WASAPI conferma lo stop qui, non subito dopo StopRecording(): per questo FermaRegistrazioneAsync è async.
-            registrazioneFermata?.TrySetResult();
+            // e.Exception non è null se lo stop è dovuto a un errore (es. microfono scollegato):
+            // in quel caso propaghiamo l'errore invece di far sembrare tutto andato bene.
+            if (e.Exception != null)
+            {
+                registrazioneCompletata?.TrySetException(e.Exception);
+            }
+            else
+            {
+                registrazioneCompletata?.TrySetResult(bufferAudio?.ToArray() ?? []);
+            }
         };
 
         capture.StartRecording();
     }
 
     // Ferma la registrazione e restituisce l'audio catturato, a 16kHz mono 16-bit PCM.
-    public async Task<byte[]> FermaRegistrazioneAsync()
+    public Task<byte[]> FermaRegistrazioneAsync()
     {
-        registrazioneFermata = new TaskCompletionSource();
-        capture?.StopRecording();
-        await registrazioneFermata.Task;
-
-        return bufferAudio?.ToArray() ?? [];
+        capture?.StopRecording(); // se la cattura si era già fermata da sola (errore), non fa nulla
+        return registrazioneCompletata?.Task ?? Task.FromResult<byte[]>([]);
     }
 
     public void Dispose()
