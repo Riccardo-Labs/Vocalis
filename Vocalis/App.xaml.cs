@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using NAudio.Wave;
+using Vocalis.Attivazione;
 using Vocalis.Audio;
 using Vocalis.UI;
 
@@ -13,16 +14,26 @@ public partial class App : Application
 
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
-    private IconaNotifica? trayIcon;
+    private IconaNotifica? iconaNotifica;
+    private readonly HookMouse hookMouse = new();
+    private readonly HookTastiera hookTastiera = new();
+    private readonly RegistratoreAudio registratoreDettatura = new();
+    private readonly CoordinatoreDettatura coordinatore;
 #if DEBUG
     private readonly RegistratoreAudio registratoreTest = new();
 #endif
+
+    public App()
+    {
+        // I campi sopra sono già inizializzati qui: l'ordine di dichiarazione conta.
+        coordinatore = new CoordinatoreDettatura(hookMouse, hookTastiera, registratoreDettatura);
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e); // Chiamata al metodo base per gestire l'avvio dell'applicazione
 
-        // permette di garantire che solo una istanza dell'applicazione sia in esecuzione.
+        // Garantisce che sia in esecuzione una sola istanza dell'applicazione.
         singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out ownsMutex);
         if (!ownsMutex)
         {
@@ -34,21 +45,37 @@ public partial class App : Application
             Shutdown();
             return;
         }
-        
-        trayIcon = new IconaNotifica();
-        trayIcon.UscitaRichiesta += () => Shutdown();
+
+        iconaNotifica = new IconaNotifica();
+        iconaNotifica.UscitaRichiesta += Shutdown;
+
+        // StatoCambiato/Errore arrivano da Task.Run (thread del pool, non UI): serve Dispatcher.
+        coordinatore.StatoCambiato += stato => Dispatcher.BeginInvoke(() => iconaNotifica?.ImpostaStato(stato switch
+        {
+            StatoDettatura.Registrazione => "Registrazione...",
+            StatoDettatura.Trascrizione => "Salvataggio...",
+            _ => "Pronto",
+        }));
+        coordinatore.Errore += messaggio => Dispatcher.BeginInvoke(() =>
+            MessageBox.Show(
+                $"Registrazione non riuscita.\nVerifica che un microfono sia collegato e impostato come predefinito.\n\nDettagli: {messaggio}",
+                "Vocalis",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error));
+        hookMouse.Avvia();
+        hookTastiera.Avvia();
 #if DEBUG
-        trayIcon.TestRegistrazioneRichiesto += async () => await EseguiTestRegistrazioneAsync();
+        iconaNotifica.TestRegistrazioneRichiesto += async () => await EseguiTestRegistrazioneAsync();
         // DataAvailable arriva su un thread di NAudio, non su quello della UI:
         // Dispatcher.BeginInvoke passa l'aggiornamento al thread giusto (stessa regola degli hook, vedi CLAUDE.md).
         registratoreTest.LivelloCambiato += livello =>
-            Dispatcher.BeginInvoke(() => trayIcon?.ImpostaStato($"Registrazione test... livello {livello:P0}"));
+            Dispatcher.BeginInvoke(() => iconaNotifica?.ImpostaStato($"Registrazione test... livello {livello:P0}"));
 #endif
-        trayIcon.ImpostaStato("Pronto");
+        iconaNotifica.ImpostaStato("Pronto");
     }
 
 #if DEBUG
-    /// <summary>Solo build Debug: registra 5 secondi, salva un .wav in %TEMP% e mostra il livello nel tooltip.</summary>
+    // Solo build Debug: registra 5 secondi, salva un .wav in %TEMP% e mostra il livello nel tooltip.
     private async Task EseguiTestRegistrazioneAsync()
     {
         try
@@ -76,14 +103,17 @@ public partial class App : Application
         }
         finally
         {
-            trayIcon?.ImpostaStato("Pronto");
+            iconaNotifica?.ImpostaStato("Pronto");
         }
     }
 #endif
 
     protected override void OnExit(ExitEventArgs e)
     {
-        trayIcon?.Dispose();
+        iconaNotifica?.Dispose();
+        coordinatore.Dispose();
+        hookMouse.Dispose();
+        hookTastiera.Dispose();
 #if DEBUG
         registratoreTest.Dispose();
 #endif
