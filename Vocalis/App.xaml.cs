@@ -17,6 +17,7 @@ public partial class App : Application
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
     private IconaNotifica? iconaNotifica;
+    private readonly FinestraOverlay overlay = new();
     private readonly HookMouse hookMouse = new();
     private readonly HookTastiera hookTastiera = new();
     private readonly RegistratoreAudio registratoreDettatura = new();
@@ -57,22 +58,42 @@ public partial class App : Application
         iconaNotifica.UscitaRichiesta += Shutdown;
 
         // StatoCambiato/Errore arrivano da Task.Run (thread del pool, non UI): serve Dispatcher.
-        coordinatore.StatoCambiato += stato => Dispatcher.BeginInvoke(() => iconaNotifica?.ImpostaStato(stato switch
+        coordinatore.StatoCambiato += stato => Dispatcher.BeginInvoke(() =>
         {
-            StatoDettatura.Registrazione => "Registrazione...",
-            StatoDettatura.Trascrizione => "Trascrizione...",
-            _ => "Pronto",
-        }));
+            iconaNotifica?.ImpostaStato(stato switch
+            {
+                StatoDettatura.Registrazione => "Registrazione...",
+                StatoDettatura.Trascrizione => "Trascrizione...",
+                _ => "Pronto",
+            });
+
+            switch (stato)
+            {
+                case StatoDettatura.Registrazione:
+                    overlay.ImpostaTesto("In ascolto...");
+                    break;
+                case StatoDettatura.Trascrizione:
+                    overlay.ImpostaTesto("Sto trascrivendo...");
+                    break;
+                // Inattivo non tocca l'overlay qui: TrascrizioneCompletata/Annullato/Errore
+                // decidono loro il messaggio finale e per quanto resta visibile.
+            }
+        });
         coordinatore.AvanzamentoDownloadModello += percentuale => Dispatcher.BeginInvoke(() =>
             iconaNotifica?.ImpostaStato($"Scaricamento modello... {percentuale:P0}"));
-        // Il testo viene incollato direttamente dal coordinatore: nessun popup, il feedback è
-        // il testo stesso che compare dove stavi scrivendo (un indicatore visivo arriva in Fase 6).
+        coordinatore.TrascrizioneCompletata += testo => Dispatcher.BeginInvoke(() =>
+            overlay.MostraTemporaneo(string.IsNullOrEmpty(testo) ? "Nessun testo riconosciuto" : "Fatto", TimeSpan.FromSeconds(1.5)));
+        coordinatore.Annullato += () => Dispatcher.BeginInvoke(() =>
+            overlay.MostraTemporaneo("Annullato", TimeSpan.FromSeconds(1.5)));
         coordinatore.Errore += messaggio => Dispatcher.BeginInvoke(() =>
+        {
+            overlay.MostraTemporaneo("Errore", TimeSpan.FromSeconds(1.5));
             MessageBox.Show(
                 $"Operazione non riuscita.\nVerifica microfono e connessione a internet.\n\nDettagli: {messaggio}",
                 "Vocalis",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error));
+                MessageBoxImage.Error);
+        });
         hookMouse.Avvia();
         hookTastiera.Avvia();
 #if DEBUG
@@ -80,6 +101,7 @@ public partial class App : Application
         iconaNotifica.TestDownloadModelloRichiesto += async () => await EseguiTestDownloadModelloAsync();
         iconaNotifica.TestAppuntiRichiesto += EseguiTestAppunti;
         iconaNotifica.TestIncollaRichiesto += async () => await EseguiTestIncollaAsync();
+        iconaNotifica.TestOverlayRichiesto += EseguiTestOverlay;
         // DataAvailable arriva su un thread di NAudio, non su quello della UI:
         // Dispatcher.BeginInvoke passa l'aggiornamento al thread giusto (stessa regola degli hook, vedi CLAUDE.md).
         registratoreTest.LivelloCambiato += livello =>
@@ -196,6 +218,12 @@ public partial class App : Application
         iconaNotifica?.ImpostaStato("Pronto");
     }
 
+    // Solo build Debug: mostra l'overlay per 2 secondi con un testo di prova, poi lo nasconde da solo.
+    private void EseguiTestOverlay()
+    {
+        overlay.MostraTemporaneo("In ascolto...", TimeSpan.FromSeconds(2));
+    }
+
     // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
     private async Task EseguiTestDownloadModelloAsync()
     {
@@ -233,6 +261,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         iconaNotifica?.Dispose();
+        overlay.Close();
         coordinatore.Dispose();
         hookMouse.Dispose();
         hookTastiera.Dispose();

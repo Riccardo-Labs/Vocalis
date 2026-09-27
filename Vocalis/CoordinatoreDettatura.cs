@@ -28,6 +28,7 @@ public sealed class CoordinatoreDettatura : IDisposable
     public event Action<StatoDettatura>? StatoCambiato;
     public event Action<double>? AvanzamentoDownloadModello;
     public event Action<string>? TrascrizioneCompletata;
+    public event Action? Annullato;
     public event Action<string>? Errore;
 
     public CoordinatoreDettatura(HookMouse hookMouse, HookTastiera hookTastiera, RegistratoreAudio registratore, string percorsoModello)
@@ -105,6 +106,7 @@ public sealed class CoordinatoreDettatura : IDisposable
                 return; // non stavamo registrando: Esc non fa nulla
 
             StatoCambiato?.Invoke(macchina.Stato); // torna subito Inattivo
+            Annullato?.Invoke();
 
             await registratore.FermaRegistrazioneAsync(); // ferma la cattura e scarta l'audio, non lo salviamo
         }
