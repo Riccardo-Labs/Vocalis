@@ -3,9 +3,7 @@ using System.Windows.Forms;
 
 namespace Vocalis.UI;
 
-/// <summary>
-/// Icona nell'area di notifica (vicino all'orologio) con il menu dell'app.
-/// </summary>
+// Icona nell'area di notifica (vicino all'orologio) con il menu dell'app.
 public sealed class IconaNotifica : IDisposable
 {
     // Windows tronca il tooltip dell'icona oltre questa lunghezza.
@@ -17,7 +15,7 @@ public sealed class IconaNotifica : IDisposable
     public event Action? UscitaRichiesta;
 
 #if DEBUG
-    /// <summary>Solo build Debug: voce di menu per provare la registrazione senza aspettare la Fase 3 (attivazione da mouse).</summary>
+    // Solo build Debug: voce di menu per provare la registrazione senza aspettare l'attivazione da mouse.
     public event Action? TestRegistrazioneRichiesto;
 #endif
 
