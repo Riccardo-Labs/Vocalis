@@ -13,6 +13,42 @@ public static class GestoreAppunti
     private static readonly uint FormatoCloud =
         NativeMethods.RegisterClipboardFormat("CanUploadToCloudClipboard");
 
+    // Restituisce il testo attualmente negli appunti, o null se non c'è testo (appunti vuoti,
+    // o contenuto non testuale come un'immagine: in quel caso non c'è nulla da leggere qui,
+    // e chi chiama semplicemente non proverà a ripristinarlo dopo).
+    public static string? LeggiTestoSeDisponibile()
+    {
+        if (!NativeMethods.IsClipboardFormatAvailable(NativeMethods.CF_UNICODETEXT))
+            return null;
+
+        if (!NativeMethods.OpenClipboard(IntPtr.Zero))
+            return null;
+
+        try
+        {
+            IntPtr handle = NativeMethods.GetClipboardData(NativeMethods.CF_UNICODETEXT);
+            if (handle == IntPtr.Zero)
+                return null;
+
+            IntPtr puntatore = NativeMethods.GlobalLock(handle);
+            if (puntatore == IntPtr.Zero)
+                return null;
+
+            try
+            {
+                return Marshal.PtrToStringUni(puntatore);
+            }
+            finally
+            {
+                NativeMethods.GlobalUnlock(handle);
+            }
+        }
+        finally
+        {
+            NativeMethods.CloseClipboard();
+        }
+    }
+
     public static bool ImpostaTesto(string testo)
     {
         if (!NativeMethods.OpenClipboard(IntPtr.Zero))

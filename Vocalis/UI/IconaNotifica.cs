@@ -23,6 +23,9 @@ public sealed class IconaNotifica : IDisposable
 
     // Solo build Debug: voce di menu per provare la scrittura negli appunti.
     public event Action? TestAppuntiRichiesto;
+
+    // Solo build Debug: voce di menu per provare l'incolla automatico con SendInput.
+    public event Action? TestIncollaRichiesto;
 #endif
 
     public IconaNotifica()
@@ -37,6 +40,7 @@ public sealed class IconaNotifica : IDisposable
         menu.Items.Add("Test: registra 5 secondi → salva .wav", null, (_, _) => TestRegistrazioneRichiesto?.Invoke());
         menu.Items.Add("Test: scarica modello Whisper", null, (_, _) => TestDownloadModelloRichiesto?.Invoke());
         menu.Items.Add("Test: scrivi negli appunti", null, (_, _) => TestAppuntiRichiesto?.Invoke());
+        menu.Items.Add("Test: incolla automatico (3s per cambiare finestra)", null, (_, _) => TestIncollaRichiesto?.Invoke());
         menu.Items.Add(new ToolStripSeparator());
 #endif
         menu.Items.Add("Esci", null, (_, _) => UscitaRichiesta?.Invoke());
