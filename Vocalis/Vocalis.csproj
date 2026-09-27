@@ -25,4 +25,16 @@
     <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
   </ItemGroup>
 
+  <!-- I pacchetti Whisper.net.Runtime* copiano le librerie native per TUTTE le piattaforme
+       che supportano, non solo win-x64: dopo la pubblicazione togliamo quelle che qui non
+       servono mai (~63MB), tenendo solo win-x64 (CPU) e vulkan/win-x64 (GPU). -->
+  <Target Name="RimuoviRuntimeNativiInutili" AfterTargets="Publish">
+    <ItemGroup>
+      <CartelleRuntimeInutili Include="$(PublishDir)runtimes\win-x86" />
+      <CartelleRuntimeInutili Include="$(PublishDir)runtimes\win-arm64" />
+      <CartelleRuntimeInutili Include="$(PublishDir)runtimes\vulkan\linux-x64" />
+    </ItemGroup>
+    <RemoveDir Directories="@(CartelleRuntimeInutili)" Condition="Exists('%(CartelleRuntimeInutili.Identity)')" />
+  </Target>
+
 </Project>
