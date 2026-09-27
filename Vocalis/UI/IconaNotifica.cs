@@ -17,6 +17,9 @@ public sealed class IconaNotifica : IDisposable
 #if DEBUG
     // Solo build Debug: voce di menu per provare la registrazione senza aspettare l'attivazione da mouse.
     public event Action? TestRegistrazioneRichiesto;
+
+    // Solo build Debug: voce di menu per provare il download del modello Whisper.
+    public event Action? TestDownloadModelloRichiesto;
 #endif
 
     public IconaNotifica()
@@ -29,6 +32,7 @@ public sealed class IconaNotifica : IDisposable
         menu.Items.Add(new ToolStripSeparator());
 #if DEBUG
         menu.Items.Add("Test: registra 5 secondi → salva .wav", null, (_, _) => TestRegistrazioneRichiesto?.Invoke());
+        menu.Items.Add("Test: scarica modello Whisper", null, (_, _) => TestDownloadModelloRichiesto?.Invoke());
         menu.Items.Add(new ToolStripSeparator());
 #endif
         menu.Items.Add("Esci", null, (_, _) => UscitaRichiesta?.Invoke());

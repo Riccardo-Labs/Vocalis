@@ -3,6 +3,7 @@ using System.Windows;
 using NAudio.Wave;
 using Vocalis.Attivazione;
 using Vocalis.Audio;
+using Vocalis.Trascrizione;
 using Vocalis.UI;
 
 namespace Vocalis;
@@ -21,6 +22,7 @@ public partial class App : Application
     private readonly CoordinatoreDettatura coordinatore;
 #if DEBUG
     private readonly RegistratoreAudio registratoreTest = new();
+    private readonly ScaricatoreModello scaricatoreTest = new();
 #endif
 
     public App()
@@ -66,6 +68,7 @@ public partial class App : Application
         hookTastiera.Avvia();
 #if DEBUG
         iconaNotifica.TestRegistrazioneRichiesto += async () => await EseguiTestRegistrazioneAsync();
+        iconaNotifica.TestDownloadModelloRichiesto += async () => await EseguiTestDownloadModelloAsync();
         // DataAvailable arriva su un thread di NAudio, non su quello della UI:
         // Dispatcher.BeginInvoke passa l'aggiornamento al thread giusto (stessa regola degli hook, vedi CLAUDE.md).
         registratoreTest.LivelloCambiato += livello =>
@@ -97,6 +100,43 @@ public partial class App : Application
             // Es. nessun microfono di default disponibile: non deve far crashare l'app.
             MessageBox.Show(
                 $"Registrazione non riuscita.\nVerifica che un microfono sia collegato e impostato come predefinito.\n\nDettagli: {ex.Message}",
+                "Vocalis",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            iconaNotifica?.ImpostaStato("Pronto");
+        }
+    }
+
+    // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
+    private async Task EseguiTestDownloadModelloAsync()
+    {
+        string cartellaModelli = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vocalis", "models");
+        string percorsoModello = Path.Combine(cartellaModelli, "ggml-large-v3-turbo.bin");
+
+        try
+        {
+            if (File.Exists(percorsoModello))
+            {
+                MessageBox.Show($"Il modello è già presente:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Il download resta sulla UI thread: non serve Dispatcher, a differenza degli hook.
+            var avanzamento = new Progress<double>(percentuale =>
+                iconaNotifica?.ImpostaStato($"Download modello... {percentuale:P0}"));
+
+            await scaricatoreTest.AssicuraModelloAsync(percorsoModello, avanzamento);
+
+            MessageBox.Show($"Modello scaricato in:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Download del modello non riuscito.\nVerifica la connessione a internet.\n\nDettagli: {ex.Message}",
                 "Vocalis",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
