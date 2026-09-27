@@ -31,7 +31,11 @@ public partial class FinestraOverlay : Window
     ];
 
     private readonly DispatcherTimer timerNascondi = new();
+    // Controlla periodicamente se il mouse è passato a un altro schermo mentre l'overlay è visibile:
+    // solo così riesce a "seguirlo" in tempo reale, non solo al momento in cui compare la prima volta.
+    private readonly DispatcherTimer timerSegueMouse = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly ScaleTransform[] scaleBarre;
+    private string? nomeSchermoAttuale;
 
     public FinestraOverlay()
     {
@@ -56,6 +60,15 @@ public partial class FinestraOverlay : Window
             timerNascondi.Stop();
             Hide();
         };
+
+        timerSegueMouse.Tick += (_, _) =>
+        {
+            string schermoSottoIlMouse = System.Windows.Forms.Screen.FromPoint(System.Windows.Forms.Cursor.Position).DeviceName;
+            if (schermoSottoIlMouse != nomeSchermoAttuale)
+            {
+                PosizionaBassoCentro();
+            }
+        };
     }
 
     public void ImpostaTesto(string testo, IconaOverlay icona = IconaOverlay.Nessuna)
@@ -65,6 +78,7 @@ public partial class FinestraOverlay : Window
         MostraIcona(icona);
         Show();
         PosizionaBassoCentro(); // la dimensione cambia col testo/icona, riposiziona per restare ancorata in basso al centro
+        timerSegueMouse.Start();
     }
 
     // Mostra il testo e sparisce da sola dopo "durata": per gli stati brevi (annullato, errore, ecc.).
@@ -78,6 +92,7 @@ public partial class FinestraOverlay : Window
     public void Nascondi()
     {
         timerNascondi.Stop();
+        timerSegueMouse.Stop();
         FermaTutteLeAnimazioni();
         Hide();
     }
@@ -151,10 +166,27 @@ public partial class FinestraOverlay : Window
         NativeMethods.SetWindowLong(handle, NativeMethods.GWL_EXSTYLE, stileAttuale | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW);
     }
 
+    // Si posiziona sullo schermo dove si trova il mouse in questo momento, non sempre su quello
+    // primario: utile con più monitor. WinForms lavora in pixel fisici, WPF in unità indipendenti
+    // dalla risoluzione (DIP): li converto con lo scaling di sistema. Funziona bene se tutti i
+    // monitor hanno lo stesso scaling; con scaling diversi tra schermi andrebbe rifinito per-monitor.
     private void PosizionaBassoCentro()
     {
         const double margine = 16;
-        Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - ActualWidth) / 2;
-        Top = SystemParameters.WorkArea.Bottom - ActualHeight - margine;
+
+        System.Drawing.Point puntoMouse = System.Windows.Forms.Cursor.Position;
+        System.Windows.Forms.Screen schermo = System.Windows.Forms.Screen.FromPoint(puntoMouse);
+        nomeSchermoAttuale = schermo.DeviceName;
+
+        System.Drawing.Rectangle areaSchermo = schermo.WorkingArea;
+        double scala = VisualTreeHelper.GetDpi(this).DpiScaleX;
+
+        double areaLeft = areaSchermo.Left / scala;
+        double areaTop = areaSchermo.Top / scala;
+        double areaWidth = areaSchermo.Width / scala;
+        double areaHeight = areaSchermo.Height / scala;
+
+        Left = areaLeft + (areaWidth - ActualWidth) / 2;
+        Top = areaTop + areaHeight - ActualHeight - margine;
     }
 }
