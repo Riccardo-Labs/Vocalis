@@ -1,5 +1,6 @@
 using System.IO;
 using NAudio.Wave;
+using Vocalis.Appunti;
 using Vocalis.Attivazione;
 using Vocalis.Audio;
 using Vocalis.Trascrizione;
@@ -147,10 +148,32 @@ public sealed class CoordinatoreDettatura : IDisposable
             macchina.FineTrascrizione();
             StatoCambiato?.Invoke(macchina.Stato);
             TrascrizioneCompletata?.Invoke(testo);
+
+            if (!string.IsNullOrEmpty(testo))
+            {
+                await IncollaAsync(testo);
+            }
         }
         finally
         {
             File.Delete(percorsoTemporaneo);
+        }
+    }
+
+    private static async Task IncollaAsync(string testo)
+    {
+        string? contenutoPrecedente = GestoreAppunti.LeggiTestoSeDisponibile();
+
+        if (!GestoreAppunti.ImpostaTesto(testo))
+            return; // niente da incollare se la scrittura negli appunti fallisce
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // tempo all'app di destinazione di registrare il focus
+        SimulatoreIncolla.SimulaCtrlV();
+        await Task.Delay(TimeSpan.FromMilliseconds(300)); // tempo di completare l'incolla prima di ripristinare
+
+        if (contenutoPrecedente != null)
+        {
+            GestoreAppunti.ImpostaTesto(contenutoPrecedente);
         }
     }
 

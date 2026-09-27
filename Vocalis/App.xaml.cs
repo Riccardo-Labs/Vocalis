@@ -65,12 +65,8 @@ public partial class App : Application
         }));
         coordinatore.AvanzamentoDownloadModello += percentuale => Dispatcher.BeginInvoke(() =>
             iconaNotifica?.ImpostaStato($"Scaricamento modello... {percentuale:P0}"));
-        coordinatore.TrascrizioneCompletata += testo => Dispatcher.BeginInvoke(() =>
-            MessageBox.Show(
-                string.IsNullOrEmpty(testo) ? "(nessun testo riconosciuto)" : testo,
-                "Vocalis — Trascrizione",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information));
+        // Il testo viene incollato direttamente dal coordinatore: nessun popup, il feedback è
+        // il testo stesso che compare dove stavi scrivendo (un indicatore visivo arriva in Fase 6).
         coordinatore.Errore += messaggio => Dispatcher.BeginInvoke(() =>
             MessageBox.Show(
                 $"Operazione non riuscita.\nVerifica microfono e connessione a internet.\n\nDettagli: {messaggio}",
@@ -83,6 +79,7 @@ public partial class App : Application
         iconaNotifica.TestRegistrazioneRichiesto += async () => await EseguiTestRegistrazioneAsync();
         iconaNotifica.TestDownloadModelloRichiesto += async () => await EseguiTestDownloadModelloAsync();
         iconaNotifica.TestAppuntiRichiesto += EseguiTestAppunti;
+        iconaNotifica.TestIncollaRichiesto += async () => await EseguiTestIncollaAsync();
         // DataAvailable arriva su un thread di NAudio, non su quello della UI:
         // Dispatcher.BeginInvoke passa l'aggiornamento al thread giusto (stessa regola degli hook, vedi CLAUDE.md).
         registratoreTest.LivelloCambiato += livello =>
@@ -148,15 +145,55 @@ public partial class App : Application
         }
     }
 
-    // Solo build Debug: scrive un testo di prova negli appunti, senza ancora incollarlo o ripristinare il vecchio contenuto.
+    // Solo build Debug: ciclo completo leggi/scrivi/ripristina, senza ancora simulare Ctrl+V.
     private void EseguiTestAppunti()
     {
+        string? contenutoPrecedente = GestoreAppunti.LeggiTestoSeDisponibile();
+
         bool riuscito = GestoreAppunti.ImpostaTesto("Testo di prova di Vocalis — se lo vedi con Ctrl+V ma non in Win+V, funziona.");
+        if (!riuscito)
+        {
+            MessageBox.Show("Scrittura negli appunti non riuscita.", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         MessageBox.Show(
-            riuscito ? "Scritto negli appunti. Prova Ctrl+V da qualche parte, poi controlla Win+V." : "Scrittura negli appunti non riuscita.",
+            "Scritto negli appunti. Prova Ctrl+V da qualche parte, poi premi OK per ripristinare quello che c'era prima.",
             "Vocalis",
             MessageBoxButton.OK,
-            riuscito ? MessageBoxImage.Information : MessageBoxImage.Error);
+            MessageBoxImage.Information);
+
+        if (contenutoPrecedente != null)
+        {
+            GestoreAppunti.ImpostaTesto(contenutoPrecedente);
+            MessageBox.Show("Contenuto precedente ripristinato. Prova Ctrl+V di nuovo per verificare.", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            MessageBox.Show("Non c'era testo negli appunti prima (vuoti o contenuto non testuale): nessun ripristino.", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    // Solo build Debug: incolla automaticamente un testo di prova, poi ripristina gli appunti.
+    // 3 secondi di margine per spostare il focus su un editor prima che parta.
+    private async Task EseguiTestIncollaAsync()
+    {
+        iconaNotifica?.ImpostaStato("Vai sull'app di destinazione... incollo tra 3s");
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        string? contenutoPrecedente = GestoreAppunti.LeggiTestoSeDisponibile();
+        GestoreAppunti.ImpostaTesto("Testo incollato automaticamente da Vocalis.");
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100)); // tempo all'app di destinazione di registrare il focus
+        SimulatoreIncolla.SimulaCtrlV();
+        await Task.Delay(TimeSpan.FromMilliseconds(300)); // tempo di completare l'incolla prima di ripristinare
+
+        if (contenutoPrecedente != null)
+        {
+            GestoreAppunti.ImpostaTesto(contenutoPrecedente);
+        }
+
+        iconaNotifica?.ImpostaStato("Pronto");
     }
 
     // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
