@@ -21,11 +21,8 @@ public static class LivelloAudio
         return Math.Min(rms / MassimoValoreShort, 1.0); // normalizzazione 
     }
 
-    /// <summary>
-    /// Calcola l'RMS da un buffer grezzo di byte contenente campioni PCM a 16 bit
-    /// (2 byte per campione, little-endian): è il formato che arriva dall'evento
-    /// DataAvailable di WASAPI, prima di essere interpretato come short.
-    /// </summary>
+    // Calcola l'RMS da un buffer grezzo di byte contenente campioni PCM a 16 bit (2 byte per
+    // campione, little-endian): è il formato che arriva dall'evento DataAvailable di WASAPI.
     public static double CalcolaRMS(byte[]? campioniGrezzi)
     {
         if (campioniGrezzi == null || campioniGrezzi.Length < 2)
