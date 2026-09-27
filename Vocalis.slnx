@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="Vocalis.Test/Vocalis.Test.csproj" />
   <Project Path="Vocalis/Vocalis.csproj" />
 </Solution>
