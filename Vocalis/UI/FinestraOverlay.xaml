@@ -9,7 +9,65 @@
         ResizeMode="NoResize"
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual">
-    <Border Background="#CC202020" CornerRadius="8" Padding="14,10">
-        <TextBlock x:Name="TestoStato" Foreground="White" FontSize="14" />
+    <Border Background="#CC202020" CornerRadius="15" Padding="14,10">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+            <!-- Ondeggio: visibile durante l'ascolto, le barre si muovono con l'animazione avviata da codice -->
+            <StackPanel x:Name="IconaAscolto" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="Collapsed">
+                <!-- Altezze a campana (corte ai lati, alta al centro) per dare l'idea di un microfono -->
+                <Rectangle x:Name="Barra1" Width="3" Height="10" VerticalAlignment="Bottom" Fill="#F0F0F0" Margin="1,0" RadiusX="1.5" RadiusY="1.5" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform>
+                        <ScaleTransform x:Name="ScalaBarra1" ScaleY="0.4" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <Rectangle x:Name="Barra2" Width="3" Height="14" VerticalAlignment="Bottom" Fill="#F0F0F0" Margin="1,0" RadiusX="1.5" RadiusY="1.5" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform>
+                        <ScaleTransform x:Name="ScalaBarra2" ScaleY="0.7" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <Rectangle x:Name="Barra3" Width="3" Height="18" VerticalAlignment="Bottom" Fill="#F0F0F0" Margin="1,0" RadiusX="1.5" RadiusY="1.5" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform>
+                        <ScaleTransform x:Name="ScalaBarra3" ScaleY="1.0" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <Rectangle x:Name="Barra4" Width="3" Height="14" VerticalAlignment="Bottom" Fill="#F0F0F0" Margin="1,0" RadiusX="1.5" RadiusY="1.5" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform>
+                        <ScaleTransform x:Name="ScalaBarra4" ScaleY="0.6" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+                <Rectangle x:Name="Barra5" Width="3" Height="10" VerticalAlignment="Bottom" Fill="#F0F0F0" Margin="1,0" RadiusX="1.5" RadiusY="1.5" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform>
+                        <ScaleTransform x:Name="ScalaBarra5" ScaleY="0.4" />
+                    </Rectangle.RenderTransform>
+                </Rectangle>
+            </StackPanel>
+
+            <!-- Trascrizione: arco che ruota di continuo, con una "coda" che sfuma invece di un tratto pieno -->
+            <Path x:Name="IconaTrascrizione"
+                  Data="M 8,1 A 7,7 0 1 1 1,8"
+                  StrokeThickness="2"
+                  StrokeStartLineCap="Round"
+                  StrokeEndLineCap="Round"
+                  Width="16"
+                  Height="16"
+                  Margin="0,0,8,0"
+                  VerticalAlignment="Center"
+                  Visibility="Collapsed"
+                  RenderTransformOrigin="0.5,0.5">
+                <Path.Stroke>
+                    <!-- La sfumatura ruota insieme all'arco (è nello stesso sistema di coordinate),
+                         dando l'effetto di una "cometa" che gira invece di un anello statico. -->
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="Transparent" Offset="0" />
+                        <GradientStop Color="#F0F0F0" Offset="1" />
+                    </LinearGradientBrush>
+                </Path.Stroke>
+                <Path.RenderTransform>
+                    <RotateTransform x:Name="RotazioneTrascrizione" Angle="0" />
+                </Path.RenderTransform>
+            </Path>
+
+            <TextBlock x:Name="TestoStato" Foreground="#F0F0F0" FontSize="14" VerticalAlignment="Center" />
+        </StackPanel>
     </Border>
 </Window>

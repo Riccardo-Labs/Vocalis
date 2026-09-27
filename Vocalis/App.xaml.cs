@@ -70,10 +70,10 @@ public partial class App : Application
             switch (stato)
             {
                 case StatoDettatura.Registrazione:
-                    overlay.ImpostaTesto("In ascolto...");
+                    overlay.ImpostaTesto("In ascolto...", IconaOverlay.Ascolto);
                     break;
                 case StatoDettatura.Trascrizione:
-                    overlay.ImpostaTesto("Sto trascrivendo...");
+                    overlay.ImpostaTesto("Sto trascrivendo...", IconaOverlay.Trascrizione);
                     break;
                 // Inattivo non tocca l'overlay qui: TrascrizioneCompletata/Annullato/Errore
                 // decidono loro il messaggio finale e per quanto resta visibile.
@@ -82,12 +82,22 @@ public partial class App : Application
         coordinatore.AvanzamentoDownloadModello += percentuale => Dispatcher.BeginInvoke(() =>
             iconaNotifica?.ImpostaStato($"Scaricamento modello... {percentuale:P0}"));
         coordinatore.TrascrizioneCompletata += testo => Dispatcher.BeginInvoke(() =>
-            overlay.MostraTemporaneo(string.IsNullOrEmpty(testo) ? "Nessun testo riconosciuto" : "Fatto", TimeSpan.FromSeconds(1.5)));
+        {
+            if (string.IsNullOrEmpty(testo))
+            {
+                overlay.MostraTemporaneo("Nessun testo riconosciuto", IconaOverlay.Nessuna, TimeSpan.FromSeconds(1.5));
+            }
+            else
+            {
+                // Il testo compare da solo dove stavi scrivendo: l'overlay non deve più dire nulla.
+                overlay.Nascondi();
+            }
+        });
         coordinatore.Annullato += () => Dispatcher.BeginInvoke(() =>
-            overlay.MostraTemporaneo("Annullato", TimeSpan.FromSeconds(1.5)));
+            overlay.MostraTemporaneo("Annullato", IconaOverlay.Nessuna, TimeSpan.FromSeconds(1.5)));
         coordinatore.Errore += messaggio => Dispatcher.BeginInvoke(() =>
         {
-            overlay.MostraTemporaneo("Errore", TimeSpan.FromSeconds(1.5));
+            overlay.MostraTemporaneo("Errore", IconaOverlay.Nessuna, TimeSpan.FromSeconds(1.5));
             MessageBox.Show(
                 $"Operazione non riuscita.\nVerifica microfono e connessione a internet.\n\nDettagli: {messaggio}",
                 "Vocalis",
@@ -221,7 +231,7 @@ public partial class App : Application
     // Solo build Debug: mostra l'overlay per 2 secondi con un testo di prova, poi lo nasconde da solo.
     private void EseguiTestOverlay()
     {
-        overlay.MostraTemporaneo("In ascolto...", TimeSpan.FromSeconds(2));
+        overlay.MostraTemporaneo("In ascolto...", IconaOverlay.Ascolto, TimeSpan.FromSeconds(2));
     }
 
     // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
