@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using NAudio.Wave;
+using Vocalis.Appunti;
 using Vocalis.Attivazione;
 using Vocalis.Audio;
 using Vocalis.Trascrizione;
@@ -81,6 +82,7 @@ public partial class App : Application
 #if DEBUG
         iconaNotifica.TestRegistrazioneRichiesto += async () => await EseguiTestRegistrazioneAsync();
         iconaNotifica.TestDownloadModelloRichiesto += async () => await EseguiTestDownloadModelloAsync();
+        iconaNotifica.TestAppuntiRichiesto += EseguiTestAppunti;
         // DataAvailable arriva su un thread di NAudio, non su quello della UI:
         // Dispatcher.BeginInvoke passa l'aggiornamento al thread giusto (stessa regola degli hook, vedi CLAUDE.md).
         registratoreTest.LivelloCambiato += livello =>
@@ -144,6 +146,17 @@ public partial class App : Application
         {
             iconaNotifica?.ImpostaStato("Pronto");
         }
+    }
+
+    // Solo build Debug: scrive un testo di prova negli appunti, senza ancora incollarlo o ripristinare il vecchio contenuto.
+    private void EseguiTestAppunti()
+    {
+        bool riuscito = GestoreAppunti.ImpostaTesto("Testo di prova di Vocalis — se lo vedi con Ctrl+V ma non in Win+V, funziona.");
+        MessageBox.Show(
+            riuscito ? "Scritto negli appunti. Prova Ctrl+V da qualche parte, poi controlla Win+V." : "Scrittura negli appunti non riuscita.",
+            "Vocalis",
+            MessageBoxButton.OK,
+            riuscito ? MessageBoxImage.Information : MessageBoxImage.Error);
     }
 
     // Solo build Debug: scarica il modello Whisper se manca, mostrando l'avanzamento nel tooltip.
