@@ -10,13 +10,13 @@ public partial class App : Application
 
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
-    private TrayIcon? trayIcon;
+    private IconaNotifica? trayIcon;
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        base.OnStartup(e);
+        base.OnStartup(e); // Chiamata al metodo base per gestire l'avvio dell'applicazione
 
-        // Una sola istanza: due Vocalis aperti registrerebbero e incollerebbero due volte.
+        // permette di garantire che solo una istanza dell'applicazione sia in esecuzione.
         singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out ownsMutex);
         if (!ownsMutex)
         {
@@ -28,10 +28,10 @@ public partial class App : Application
             Shutdown();
             return;
         }
-
-        trayIcon = new TrayIcon();
-        trayIcon.ExitRequested += () => Shutdown();
-        trayIcon.SetStatus("Pronto");
+        
+        trayIcon = new IconaNotifica();
+        trayIcon.UscitaRichiesta += () => Shutdown();
+        trayIcon.ImpostaStato("Pronto");
     }
 
     protected override void OnExit(ExitEventArgs e)

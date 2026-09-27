@@ -6,7 +6,7 @@ namespace Vocalis.UI;
 /// <summary>
 /// Icona nell'area di notifica (vicino all'orologio) con il menu dell'app.
 /// </summary>
-public sealed class TrayIcon : IDisposable
+public sealed class IconaNotifica : IDisposable
 {
     // Windows tronca il tooltip dell'icona oltre questa lunghezza.
     private const int MaxTooltipLength = 127;
@@ -14,9 +14,9 @@ public sealed class TrayIcon : IDisposable
     private readonly NotifyIcon notifyIcon;
     private readonly ToolStripMenuItem statusItem;
 
-    public event Action? ExitRequested;
+    public event Action? UscitaRichiesta;
 
-    public TrayIcon()
+    public IconaNotifica()
     {
         // Prima voce del menu: solo testo di stato, non cliccabile.
         statusItem = new ToolStripMenuItem { Enabled = false };
@@ -24,7 +24,7 @@ public sealed class TrayIcon : IDisposable
         var menu = new ContextMenuStrip();
         menu.Items.Add(statusItem);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Esci", null, (_, _) => ExitRequested?.Invoke());
+        menu.Items.Add("Esci", null, (_, _) => UscitaRichiesta?.Invoke());
 
         notifyIcon = new NotifyIcon
         {
@@ -34,7 +34,7 @@ public sealed class TrayIcon : IDisposable
         };
     }
 
-    public void SetStatus(string status)
+    public void ImpostaStato(string status)
     {
         statusItem.Text = status;
 
