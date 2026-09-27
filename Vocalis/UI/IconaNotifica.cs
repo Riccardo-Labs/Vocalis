@@ -16,6 +16,11 @@ public sealed class IconaNotifica : IDisposable
 
     public event Action? UscitaRichiesta;
 
+#if DEBUG
+    /// <summary>Solo build Debug: voce di menu per provare la registrazione senza aspettare la Fase 3 (attivazione da mouse).</summary>
+    public event Action? TestRegistrazioneRichiesto;
+#endif
+
     public IconaNotifica()
     {
         // Prima voce del menu: solo testo di stato, non cliccabile.
@@ -24,6 +29,10 @@ public sealed class IconaNotifica : IDisposable
         var menu = new ContextMenuStrip();
         menu.Items.Add(statusItem);
         menu.Items.Add(new ToolStripSeparator());
+#if DEBUG
+        menu.Items.Add("Test: registra 5 secondi → salva .wav", null, (_, _) => TestRegistrazioneRichiesto?.Invoke());
+        menu.Items.Add(new ToolStripSeparator());
+#endif
         menu.Items.Add("Esci", null, (_, _) => UscitaRichiesta?.Invoke());
 
         notifyIcon = new NotifyIcon
