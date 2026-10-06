@@ -13,6 +13,7 @@ public sealed class IconaNotifica : IDisposable
     private readonly ToolStripMenuItem statusItem;
 
     public event Action? UscitaRichiesta;
+    public event Action? ImpostazioniRichieste;
 
 #if DEBUG
     // Solo build Debug: voce di menu per provare la registrazione senza aspettare l'attivazione da mouse.
@@ -47,6 +48,7 @@ public sealed class IconaNotifica : IDisposable
         menu.Items.Add("Test: mostra overlay", null, (_, _) => TestOverlayRichiesto?.Invoke());
         menu.Items.Add(new ToolStripSeparator());
 #endif
+        menu.Items.Add("Impostazioni", null, (_, _) => ImpostazioniRichieste?.Invoke());
         menu.Items.Add("Esci", null, (_, _) => UscitaRichiesta?.Invoke());
 
         notifyIcon = new NotifyIcon

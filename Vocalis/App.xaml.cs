@@ -17,6 +17,7 @@ public partial class App : Application
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
     private IconaNotifica? iconaNotifica;
+    private FinestraImpostazioni? finestraImpostazioni;
     private readonly FinestraOverlay overlay = new();
     private readonly HookMouse hookMouse = new();
     private readonly HookTastiera hookTastiera = new();
@@ -56,6 +57,7 @@ public partial class App : Application
 
         iconaNotifica = new IconaNotifica();
         iconaNotifica.UscitaRichiesta += Shutdown;
+        iconaNotifica.ImpostazioniRichieste += ApriImpostazioni;
 
         // StatoCambiato/Errore arrivano da Task.Run (thread del pool, non UI): serve Dispatcher.
         coordinatore.StatoCambiato += stato => Dispatcher.BeginInvoke(() =>
@@ -118,6 +120,21 @@ public partial class App : Application
             Dispatcher.BeginInvoke(() => iconaNotifica?.ImpostaStato($"Registrazione test... livello {livello:P0}"));
 #endif
         iconaNotifica.ImpostaStato("Pronto");
+    }
+
+    // Una sola finestra alla volta: se è già aperta, la porta in primo piano invece di crearne un'altra.
+    private void ApriImpostazioni()
+    {
+        if (finestraImpostazioni is { IsLoaded: true })
+        {
+            finestraImpostazioni.Activate();
+            return;
+        }
+
+        finestraImpostazioni = new FinestraImpostazioni();
+        finestraImpostazioni.Closed += (_, _) => finestraImpostazioni = null;
+        finestraImpostazioni.Show();
+        finestraImpostazioni.Activate();
     }
 
 #if DEBUG
