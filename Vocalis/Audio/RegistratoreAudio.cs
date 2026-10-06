@@ -2,6 +2,11 @@ using System.IO;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
+// WasapiCapture è obsoleto in NAudio 3.x (sostituito da WasapiRecorderBuilder), ma funziona e ha
+// eventi semplici da seguire. Silenziamo l'avviso solo in questo file: migrare è un debito tecnico
+// noto (vedi CLAUDE.md), da affrontare come modifica separata.
+#pragma warning disable CS0618
+
 namespace Vocalis.Audio;
 
 // Cattura audio dal microfono di default tramite WASAPI e lo accumula in memoria,
