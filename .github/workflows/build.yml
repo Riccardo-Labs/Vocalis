@@ -1,0 +1,28 @@
+name: Build e test
+
+# Parte a ogni push su main e a ogni pull request verso main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-e-test:
+    # WPF funziona solo su Windows.
+    runs-on: windows-latest
+
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Installa .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compila
+        run: dotnet build Vocalis.slnx -c Release
+
+      - name: Test
+        run: dotnet test Vocalis.slnx -c Release --no-build
