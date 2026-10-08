@@ -4,6 +4,7 @@ using NAudio.Wave;
 using Vocalis.Appunti;
 using Vocalis.Attivazione;
 using Vocalis.Audio;
+using Vocalis.Dati;
 using Vocalis.Trascrizione;
 using Vocalis.UI;
 
@@ -17,6 +18,7 @@ public partial class App : Application
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
     private IconaNotifica? iconaNotifica;
+    private Impostazioni impostazioni = new();
     private FinestraImpostazioni? finestraImpostazioni;
     private readonly FinestraOverlay overlay = new();
     private readonly HookMouse hookMouse = new();
@@ -54,6 +56,9 @@ public partial class App : Application
             Shutdown();
             return;
         }
+
+        // Letto solo dall'istanza che resta in vita: file assente o corrotto = valori di default.
+        impostazioni = GestoreImpostazioni.CaricaImpostazioni(GestoreImpostazioni.PercorsoPredefinito);
 
         iconaNotifica = new IconaNotifica();
         iconaNotifica.UscitaRichiesta += Shutdown;
@@ -106,6 +111,7 @@ public partial class App : Application
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         });
+        ApplicaAttivatore();
         hookMouse.Avvia();
         hookTastiera.Avvia();
 #if DEBUG
@@ -122,6 +128,16 @@ public partial class App : Application
         iconaNotifica.ImpostaStato("Pronto");
     }
 
+    // Passa all'hook il pulsante scelto nelle impostazioni. Nome non riconosciuto (es. file modificato
+    // a mano): l'hook resta sull'ultimo pulsante valido, di partenza mouse4.
+    private void ApplicaAttivatore()
+    {
+        if (Attivatore.TentaConverti(impostazioni.Attivatore, out int pulsante))
+        {
+            hookMouse.ImpostaPulsante(pulsante);
+        }
+    }
+
     // Una sola finestra alla volta: se è già aperta, la porta in primo piano invece di crearne un'altra.
     private void ApriImpostazioni()
     {
@@ -131,7 +147,8 @@ public partial class App : Application
             return;
         }
 
-        finestraImpostazioni = new FinestraImpostazioni();
+        finestraImpostazioni = new FinestraImpostazioni(impostazioni);
+        finestraImpostazioni.ImpostazioniSalvate += ApplicaAttivatore;
         finestraImpostazioni.Closed += (_, _) => finestraImpostazioni = null;
         finestraImpostazioni.Show();
         finestraImpostazioni.Activate();

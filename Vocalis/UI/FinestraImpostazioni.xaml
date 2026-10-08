@@ -5,10 +5,10 @@
         Width="400" Height="250"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
-    <Grid>
-        <TextBlock Text="Hello World"
-                   FontSize="32"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
-    </Grid>
+    <StackPanel Margin="20" VerticalAlignment="Center">
+        <TextBlock Text="Attivatore" Margin="0,0,0,4" />
+        <TextBox x:Name="CampoAttivatore" Margin="0,0,0,12" />
+        <CheckBox x:Name="CampoAvvioConWindows" Content="Avvia con Windows" Margin="0,0,0,16" />
+        <Button Content="Salva" Width="80" HorizontalAlignment="Right" Click="Salva_Click" />
+    </StackPanel>
 </Window>

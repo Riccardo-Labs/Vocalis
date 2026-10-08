@@ -17,7 +17,16 @@ public sealed class HookMouse : IDisposable
     private IntPtr hookHandle = IntPtr.Zero;
     private uint idThread;
 
+    // Pulsante laterale di attivazione (1 = mouse4, 2 = mouse5). Scritto dal thread UI quando cambiano
+    // le impostazioni, letto dal thread dell'hook: volatile garantisce che la lettura veda sempre il valore aggiornato.
+    private volatile int pulsanteAttivazione = NativeMethods.XBUTTON1;
+
     public event Action<bool>? PulsanteLateraleCliccato;
+
+    public void ImpostaPulsante(int pulsante)
+    {
+        pulsanteAttivazione = pulsante;
+    }
 
     public HookMouse()
     {
@@ -60,7 +69,7 @@ public sealed class HookMouse : IDisposable
             bool iniettato = (dati.flags & NativeMethods.LLMHF_INJECTED) != 0;
             int pulsante = (int)(dati.mouseData >> 16); // XBUTTON1/2 occupano i 16 bit alti di mouseData
 
-            if (!iniettato && pulsante == NativeMethods.XBUTTON1)
+            if (!iniettato && pulsante == pulsanteAttivazione)
             {
                 bool premuto = messaggio == NativeMethods.WM_XBUTTONDOWN;
                 PulsanteLateraleCliccato?.Invoke(premuto);
