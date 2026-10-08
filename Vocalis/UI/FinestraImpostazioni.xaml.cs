@@ -3,6 +3,7 @@ using System.Windows;
 using Vocalis.Attivazione;
 using Vocalis.Dati;
 using Vocalis.Sistema;
+using Vocalis.Trascrizione;
 
 namespace Vocalis.UI;
 
@@ -11,12 +12,16 @@ public partial class FinestraImpostazioni : Window
 {
     private readonly Impostazioni impostazioni;
 
-    public FinestraImpostazioni(Impostazioni impostazioni)
+    public FinestraImpostazioni(Impostazioni impostazioni, IReadOnlyList<string> modelliDisponibili)
     {
         InitializeComponent();
         this.impostazioni = impostazioni;
         CampoAttivatore.Text = impostazioni.Attivatore;
         CampoAvvioConWindows.IsChecked = impostazioni.AvvioConWindows;
+
+        CampoModello.ItemsSource = modelliDisponibili;
+        // Se il modello salvato non è tra quelli presenti, mostra quello che l'app userebbe davvero.
+        CampoModello.SelectedItem = CatalogoModelli.Risolvi(impostazioni.Modello, modelliDisponibili);
     }
 
     // Emesso dopo un salvataggio riuscito: l'App lo usa per applicare subito le nuove impostazioni.
@@ -37,6 +42,11 @@ public partial class FinestraImpostazioni : Window
 
         impostazioni.Attivatore = CampoAttivatore.Text.Trim();
         impostazioni.AvvioConWindows = CampoAvvioConWindows.IsChecked == true;
+        // Elenco vuoto (nessun modello scaricato): niente selezione, il valore salvato resta com'è.
+        if (CampoModello.SelectedItem is string modello)
+        {
+            impostazioni.Modello = modello;
+        }
 
         try
         {

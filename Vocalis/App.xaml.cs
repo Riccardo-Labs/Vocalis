@@ -18,7 +18,7 @@ public partial class App : Application
     private Mutex? singleInstanceMutex;
     private bool ownsMutex;
     private IconaNotifica? iconaNotifica;
-    private Impostazioni impostazioni = new();
+    private readonly Impostazioni impostazioni;
     private FinestraImpostazioni? finestraImpostazioni;
     private readonly FinestraOverlay overlay = new();
     private readonly HookMouse hookMouse = new();
@@ -26,8 +26,10 @@ public partial class App : Application
     private readonly RegistratoreAudio registratoreDettatura = new();
     private readonly CoordinatoreDettatura coordinatore;
 
-    private static readonly string PercorsoModello = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vocalis", "models", "ggml-large-v3-turbo.bin");
+    private static readonly string CartellaModelli = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Vocalis", "models");
+
+    private readonly string percorsoModello;
 #if DEBUG
     private readonly RegistratoreAudio registratoreTest = new();
     private readonly ScaricatoreModello scaricatoreTest = new();
@@ -36,8 +38,15 @@ public partial class App : Application
 
     public App()
     {
+        // Le impostazioni servono già qui: il modello scelto determina il file che il coordinatore userà.
+        // File assente o corrotto = valori di default. Lettura innocua anche per un'istanza duplicata, che poi esce.
+        impostazioni = GestoreImpostazioni.CaricaImpostazioni(GestoreImpostazioni.PercorsoPredefinito);
+
+        string modello = CatalogoModelli.Risolvi(impostazioni.Modello, CatalogoModelli.ElencaDisponibili(CartellaModelli));
+        percorsoModello = Path.Combine(CartellaModelli, CatalogoModelli.NomeFile(modello));
+
         // I campi sopra sono già inizializzati qui: l'ordine di dichiarazione conta.
-        coordinatore = new CoordinatoreDettatura(hookMouse, hookTastiera, registratoreDettatura, PercorsoModello);
+        coordinatore = new CoordinatoreDettatura(hookMouse, hookTastiera, registratoreDettatura, percorsoModello);
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -56,9 +65,6 @@ public partial class App : Application
             Shutdown();
             return;
         }
-
-        // Letto solo dall'istanza che resta in vita: file assente o corrotto = valori di default.
-        impostazioni = GestoreImpostazioni.CaricaImpostazioni(GestoreImpostazioni.PercorsoPredefinito);
 
         iconaNotifica = new IconaNotifica();
         iconaNotifica.UscitaRichiesta += Shutdown;
@@ -147,7 +153,9 @@ public partial class App : Application
             return;
         }
 
-        finestraImpostazioni = new FinestraImpostazioni(impostazioni);
+        // L'elenco si rilegge a ogni apertura: include i modelli messi in models\ nel frattempo.
+        var modelliDisponibili = CatalogoModelli.ElencaDisponibili(CartellaModelli);
+        finestraImpostazioni = new FinestraImpostazioni(impostazioni, modelliDisponibili);
         finestraImpostazioni.ImpostazioniSalvate += ApplicaAttivatore;
         finestraImpostazioni.Closed += (_, _) => finestraImpostazioni = null;
         finestraImpostazioni.Show();
@@ -170,7 +178,7 @@ public partial class App : Application
                 scrittore.Write(audio, 0, audio.Length);
             }
 
-            if (!File.Exists(PercorsoModello))
+            if (!File.Exists(percorsoModello))
             {
                 MessageBox.Show(
                     "Modello non ancora scaricato: prova prima \"Test: scarica modello Whisper\".",
@@ -180,7 +188,7 @@ public partial class App : Application
                 return;
             }
 
-            trascrittoreTest ??= new Trascrittore(PercorsoModello);
+            trascrittoreTest ??= new Trascrittore(percorsoModello);
 
             var cronometro = System.Diagnostics.Stopwatch.StartNew();
             string testo;
@@ -273,9 +281,9 @@ public partial class App : Application
     {
         try
         {
-            if (File.Exists(PercorsoModello))
+            if (File.Exists(percorsoModello))
             {
-                MessageBox.Show($"Il modello è già presente:\n{PercorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Il modello è già presente:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -283,9 +291,9 @@ public partial class App : Application
             var avanzamento = new Progress<double>(percentuale =>
                 iconaNotifica?.ImpostaStato($"Download modello... {percentuale:P0}"));
 
-            await scaricatoreTest.AssicuraModelloAsync(PercorsoModello, avanzamento);
+            await scaricatoreTest.AssicuraModelloAsync(percorsoModello, avanzamento);
 
-            MessageBox.Show($"Modello scaricato in:\n{PercorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Modello scaricato in:\n{percorsoModello}", "Vocalis", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
